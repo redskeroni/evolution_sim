@@ -11,7 +11,7 @@ screen = pygame.display.set_mode((screen_width, screen_height))
 clock = pygame.time.Clock()
 
 class Herbivore:
-    def __init__(self, x, y, color=(155, 0, 155), neural_network=None):
+    def __init__(self, x, y, color=(155, 40, 155), neural_network=None):
         self.x = x
         self.y = y
         self.radius = 5
@@ -36,7 +36,7 @@ class Herbivore:
 
     def create_neural_network(self):
         # Create a simple neural network with input, hidden, and output layers
-        input_layer = np.random.randn(3, 5)
+        input_layer = np.random.randn(4, 5)
         hidden_layer = np.random.randn(5, 5)
         output_layer = np.random.randn(5, 3)
         return [input_layer, hidden_layer, output_layer]
@@ -48,8 +48,8 @@ class Herbivore:
 
         self.color = (
             max(0, min(255, random.randint(self.r - 10, self.r + 10))),
-            max(0, min(255, random.randint(self.r - 10, self.r + 10))),
-            max(0, min(255, random.randint(self.r - 10, self.r + 10)))
+            max(0, min(255, random.randint(self.g - 10, self.g + 10))),
+            max(0, min(255, random.randint(self.b - 10, self.b + 10)))
         )
 
     def update_position(self, nearest_plant):
