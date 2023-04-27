@@ -23,7 +23,7 @@ class Herbivore:
         self._health = health
         self._move_chance = move_chance
         self._lerp_t = 0
-        self._lerp_duration = 0.5
+        self._lerp_duration = 1
         self._target_x = x
         self._target_y = y
         self._x = x
@@ -87,7 +87,7 @@ class Carnivore:
         self._health = health
         self._movechance = movechance
         self._lerp_t = 0
-        self._lerp_duration = 0.5
+        self._lerp_duration = 1
         self._target_x = x
         self._target_y = y
         self._x = x
@@ -317,7 +317,7 @@ def handle_herbivore_on_carnivore(herbivores, carnivores):
 
 def reproduce_carnivores(carnivores):
     # Choose a random herbivore to check for reproduction
-    if carnivores == []:
+    if carnivores == [] or len(carnivores) >= 30:
         pass
     else:
         selected_carn = random.choice(carnivores)
