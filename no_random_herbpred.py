@@ -133,9 +133,10 @@ class Herbivore:
             dist_y = self.y - self.hold_pos[1]
             dist = (dist_x**2 + dist_y**2)**0.5
             if dist >= 10:
-                self.age += 20
+                self.age += 120
             else:
-                self.age -= 20
+                self.health -= 2
+                self.age -= 120
             self.hold_pos = (self.x, self.y)
 
 def reproduce_and_mutate(herbs, best_herb):
@@ -262,7 +263,9 @@ class Carnivore:
             dist_y = self.y - self.hold_pos[1]
             dist = (dist_x**2 + dist_y**2)**0.5
             if dist >= 10:
-                self.age += 5
+                self.age += 120
+            else:
+                self.age -= 120
 
             self.hold_pos = (self.x, self.y)
 
@@ -281,6 +284,7 @@ def reproduce_and_mutate_pred(preds, best_pred):
             preds.append(new)
     else:
         selected_pred = random.choice(preds)
+        if best_pred == None: best_pred = selected_pred
         if random.randint(0, 30) == 0:
             child_neural_network = []
             for layer1, layer2 in zip(selected_pred.neural_network, best_pred.neural_network):
@@ -350,11 +354,11 @@ def check_collision_and_health(herbs, plants):
             if distance <= herb.radius + plant.radius:
                 if not plant.evil:
                     herb.health += 50 #min(100, 50 + herb.health)
-                    herb.age += 50
+                    herb.age += 120
                     plants.remove(plant)
                 else:
                     if herb in herbs:
-                        herb.age -= 50 # punish herbivores for eating
+                        herb.age -= 120 # punish herbivores for eating
                         herbs.remove(herb) # kills them if they eat an evil plant >:(
                     plants.remove(plant)
 
@@ -365,7 +369,7 @@ def check_predator_collision(herbs, carns):
         for herb in herbs:
             distance = math.sqrt((carn.x - herb.x)**2 + (carn.y - herb.y)**2)
             if distance <= herb.radius + carn.radius:
-                carn.health += 50
+                carn.health += 120
                 herbs.remove(herb) # eats the herby
 
 def find_best_herbs(herbs, prev_best):
@@ -453,8 +457,8 @@ def visualize_neural_network(neural_network):
 
 
 def main():
-    herbs = [Herbivore(random.randint(0, screen_width), random.randint(0, screen_height)) for _ in range(11)]
-    carns = [Carnivore(random.randint(0, screen_width), random.randint(0, screen_height)) for _ in range(11)]
+    herbs = [Herbivore(random.randint(0, screen_width), random.randint(0, screen_height)) for _ in range(20)]
+    carns = [Carnivore(random.randint(0, screen_width), random.randint(0, screen_height)) for _ in range(20)]
     plants = []
     best = None
     best_carn = None
