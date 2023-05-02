@@ -24,13 +24,15 @@ class Herbivore:
         self.g = self.color[1]
         self.b = self.color[2]
         self.age = 0
-        self.speed = 20
-        self.health = 200
+        self.speed = 30
+        self.health = 400
         self.lerp_t = 0
         self.lerp_duration = 1
         self.target_x = x
         self.target_y = y
         self.neural_network = neural_network or self.create_neural_network()
+        self.t = 0
+        self.hold_pos = (x, y)
 
     def lerp(self, start, end, t):
         return start + t * (end - start)
@@ -41,7 +43,7 @@ class Herbivore:
 
     def create_neural_network(self):
         # Create a simple neural network with input, hidden, and output layers
-        input_layer = np.random.randn(9, 10)
+        input_layer = np.random.randn(8, 10)
         hidden_layer = np.random.randn(10, 10)
         output_layer = np.random.randn(10, 4)
         return [input_layer, hidden_layer, output_layer]
@@ -62,33 +64,33 @@ class Herbivore:
             (nearest_pred.y - self.y),
             nearest_plant.evil,
             second_plant.evil,
-            self.health,
         ])
 
         # Calculate the output of the neural network
         input_layer, hidden_layer, output_layer = self.neural_network
         hidden_output = np.tanh(input_features @ input_layer)
-        output = self.softmax(hidden_output @ output_layer) # Apply softmax after multiplying with output layer
+        output = np.tanh(hidden_output @ hidden_layer) @ output_layer
 
-        random_move = output[0]
-        food_move = output[1]
-        second_food = output[2]
-        run = output[3]
+        values = [output[0], output[1], output[2], output[3]]
+        choice = ['random', 'food', 'second', 'run']
+        max_value = max(values)
+        max_index = values.index(max_value)
+        choice = choice[max_index]
 
         # Calculate where organism moves
         distance_x = nearest_plant.x - self.x
         distance_y = nearest_plant.y - self.y
-        distance = (distance_x**2 + distance_y**2)**0.5
+        distance = max(1, (distance_x**2 + distance_y**2)**0.5)
 
         distance_x_2 = second_plant.x - self.x
         distance_y_2 = second_plant.y - self.y
-        distance_2 = (distance_x_2**2 + distance_y_2**2)**0.5
+        distance_2 = max(1, (distance_x_2**2 + distance_y_2**2)**0.5)
 
-        run_distance_x = nearest_pred.x + self.x
-        run_distance_y = nearest_pred.y + self.y
+        run_distance_x = nearest_pred.x - self.x
+        run_distance_y = nearest_pred.y - self.y
         run_distance = (run_distance_x**2 + run_distance_y**2)**0.5
 
-        choice = random.choices(['random', 'food', 'second', 'run'], weights=[random_move, food_move, second_food, run])[0]
+        self.t -= 1
 
         if choice == 'random':
             self.target_x = self.x + random.randint(-abs(self.speed), abs(self.speed))
@@ -111,8 +113,8 @@ class Herbivore:
             self.health -= 1
 
         elif choice == 'run':
-            self.target_x = self.x + (run_distance_x / run_distance) * self.speed
-            self.target_y = self.y + (run_distance_y / run_distance) * self.speed
+            self.target_x = self.x - (run_distance_x / run_distance) * self.speed
+            self.target_y = self.y - (run_distance_y / run_distance) * self.speed
             self.lerp_t = 0
             self.age += 1
             self.health -= 1
@@ -125,17 +127,36 @@ class Herbivore:
         self.x = max(min(self.x, screen_width - self.radius), self.radius)
         self.y = max(min(self.y, screen_height - self.radius), self.radius)
 
+        if self.t <= 0:
+            self.t = 60
+            dist_x = self.x - self.hold_pos[0]
+            dist_y = self.y - self.hold_pos[1]
+            dist = (dist_x**2 + dist_y**2)**0.5
+            if dist >= 10:
+                self.age += 20
+            else:
+                self.age -= 20
+            self.hold_pos = (self.x, self.y)
+
 def reproduce_and_mutate(herbs, best_herb):
-    if len(herbs) <= 5:
+    if len(herbs) <= 10:
         print("reproduced :)")
         new_herbs = [Herbivore(random.randint(0, screen_width), random.randint(0, screen_height), neural_network=best_herb.neural_network) for _ in range(10)]
         for new in new_herbs:
+            new.color = (
+                max(0, min(255, random.randint(best_herb.r - 15, best_herb.r + 15))),
+                max(0, min(255, random.randint(best_herb.g - 15, best_herb.g + 15))),
+                max(0, min(255, random.randint(best_herb.b - 15, best_herb.b + 15)))
+            )
             new.mutate
             herbs.append(new)
     else:
         selected_herb = random.choice(herbs)
-        if random.randint(0, 40) == 0:
-            child_neural_network = [layer.copy() for layer in selected_herb.neural_network]
+        if random.randint(0, 20) == 0:
+            child_neural_network = []
+            for layer1, layer2 in zip(selected_herb.neural_network, best_herb.neural_network):
+                offspring_layer = (layer1 + layer2) / 2
+                child_neural_network.append(offspring_layer)
             child_color = (
                 max(0, min(255, random.randint(selected_herb.r - 15, selected_herb.r + 15))),
                 max(0, min(255, random.randint(selected_herb.g - 15, selected_herb.g + 15))),
@@ -158,12 +179,14 @@ class Carnivore:
         self.b = self.color[2]
         self.age = 0
         self.speed = 20
-        self.health = 400
+        self.health = 500
         self.lerp_t = 0
         self.lerp_duration = 1
         self.target_x = x
         self.target_y = y
         self.neural_network = neural_network or self.create_neural_network()
+        self.t = 0
+        self.hold_pos = (self.x, self.y)
 
     def lerp(self, start, end, t):
         return start + t * (end - start)
@@ -195,17 +218,20 @@ class Carnivore:
         # Calculate the output of the neural network
         input_layer, hidden_layer, output_layer = self.neural_network
         hidden_output = np.tanh(input_features @ input_layer)
-        output = self.softmax(hidden_output @ output_layer) # Apply softmax after multiplying with output layer
+        output = np.tanh(hidden_output @ hidden_layer) @ output_layer
 
-        random_move = output[0]
-        food_move = output[1]
+        values = [output[0], output[1]]
+        choice = ['random', 'food']
+        max_value = max(values)
+        max_index = values.index(max_value)
+        choice = choice[max_index]
 
         # Calculate where organism moves
         distance_x = nearest_herb.x - self.x
         distance_y = nearest_herb.y - self.y
-        distance = (distance_x**2 + distance_y**2)**0.5
+        distance = max(1, (distance_x**2 + distance_y**2)**0.5)
 
-        choice = random.choices(['random', 'food'], weights=[random_move, food_move])[0]
+        self.t -= 1
 
         if choice == 'random':
             self.target_x = self.x + random.randint(-abs(self.speed), abs(self.speed))
@@ -219,6 +245,8 @@ class Carnivore:
             self.lerp_t = 0
             self.age += 1
             self.health -= 1
+        
+        
 
         if self.lerp_t < 2:
             self.lerp_t += 1 / (self.lerp_duration * 60)
@@ -228,17 +256,36 @@ class Carnivore:
         self.x = max(min(self.x, screen_width - self.radius), self.radius)
         self.y = max(min(self.y, screen_height - self.radius), self.radius)
 
+        if self.t <= 0:
+            self.t = 60
+            dist_x = self.x - self.hold_pos[0]
+            dist_y = self.y - self.hold_pos[1]
+            dist = (dist_x**2 + dist_y**2)**0.5
+            if dist >= 10:
+                self.age += 5
+
+            self.hold_pos = (self.x, self.y)
+
+
 def reproduce_and_mutate_pred(preds, best_pred):
     if len(preds) <= 5:
         print("reproduced :)")
         new_preds = [Carnivore(random.randint(0, screen_width), random.randint(0, screen_height), neural_network=best_pred.neural_network) for _ in range(10)]
         for new in new_preds:
+            new.color = (
+                max(0, min(255, random.randint(best_pred.r - 15, best_pred.r + 15))),
+                max(0, min(255, random.randint(best_pred.g - 15, best_pred.g + 15))),
+                max(0, min(255, random.randint(best_pred.b - 15, best_pred.b + 15)))
+            )
             new.mutate
             preds.append(new)
     else:
         selected_pred = random.choice(preds)
-        if random.randint(0, 40) == 0:
-            child_neural_network = [layer.copy() for layer in selected_pred.neural_network]
+        if random.randint(0, 30) == 0:
+            child_neural_network = []
+            for layer1, layer2 in zip(selected_pred.neural_network, best_pred.neural_network):
+                offspring_layer = (layer1 + layer2) / 2
+                child_neural_network.append(offspring_layer)
             child_color = (
                 max(0, min(255, random.randint(selected_pred.r - 15, selected_pred.r + 15))),
                 max(0, min(255, random.randint(selected_pred.g - 15, selected_pred.g + 15))),
@@ -303,10 +350,11 @@ def check_collision_and_health(herbs, plants):
             if distance <= herb.radius + plant.radius:
                 if not plant.evil:
                     herb.health += 50 #min(100, 50 + herb.health)
-                    herb.age += 1
+                    herb.age += 50
                     plants.remove(plant)
                 else:
                     if herb in herbs:
+                        herb.age -= 50 # punish herbivores for eating
                         herbs.remove(herb) # kills them if they eat an evil plant >:(
                     plants.remove(plant)
 
@@ -405,8 +453,8 @@ def visualize_neural_network(neural_network):
 
 
 def main():
-    herbs = [Herbivore(random.randint(0, screen_width), random.randint(0, screen_height)) for _ in range(10)]
-    carns = [Carnivore(random.randint(0, screen_width), random.randint(0, screen_height)) for _ in range(10)]
+    herbs = [Herbivore(random.randint(0, screen_width), random.randint(0, screen_height)) for _ in range(11)]
+    carns = [Carnivore(random.randint(0, screen_width), random.randint(0, screen_height)) for _ in range(11)]
     plants = []
     best = None
     best_carn = None
